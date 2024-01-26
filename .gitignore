@@ -4,3 +4,6 @@
 !*.bib
 !.gitignore
 !/source
+!/code
+!/dataset
+!/record
