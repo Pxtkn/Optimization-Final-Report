@@ -33,9 +33,9 @@
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Title, Authors, Reprot Time.
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-\serialnum{2024-3-1145141919}
+\serialnum{}
 
-\rptname{Optimal Transport Based Distributed \gaplongcap Optimization Research}
+\rptname{Optimizing Unconstrained Problems \gaplongcap with Sharpened-BFGS}
 
 \rptauthora{郑皓壬}{3220103230} %作者1和学号
 \rptauthorb{郑俊达}{3220103540} %作者2和学号
@@ -56,7 +56,7 @@
 \newtheorem{defn2}{{Definition}}
 \newtheorem{corr2}{{Corrollary}}
 \newtheorem{thrm2}{{Theorem}}
-\newtheorem{lema2}{{lema2}}
+\newtheorem{lema2}{{Lemma}}
 \newtheorem{exmp2}{{Example}}
 \newtheorem{remark2}{{Remark}}
 \newtheorem{assumption}{Assumption}[section]
@@ -92,7 +92,7 @@
 % 论文的摘要，大致翻译一下原论文的摘要即可
 近期，对拟牛顿法的非渐进分析受到一定的关注。人们已经发现经典的 BFGS 算法具有超线性的收敛性质，
 但是在实际应用中，BFGS 算法的收敛速度往往不够快。为了解决这个问题，人们提出了一系列的改进算法，
-其中就包括了 Greedy-BFGS 算法。Greedy-BFGS 算法通过直接近似目标函数的 Hessian 矩阵而非牛顿法的方向，使得算法具有局部的二次收敛速率。但是，由于 Greedy-BFGS 算法直接近似了 Hessian 矩阵，而在牛顿法的方向上并不一定准确，因此算法需要更多步迭代才能达到局部二次收敛速率。为了进一步提高收敛速度，论文提出 Sharpened-BFGS 算法，通过结合两者的特点，实现了在更少的步数内达到局部二次收敛速率。数值实验也验证了该算法的优越性。
+其中就包括了 Greedy-BFGS 算法。Greedy-BFGS 算法通过直接近似目标函数的 Hessian 矩阵而非牛顿法的方向，使得算法具有局部的二次收敛速率。但是，由于 Greedy-BFGS 算法直接近似了 Hessian 矩阵，而在牛顿方向上并不一定准确，因此算法需要更多步迭代才能达到局部二次收敛速率。为了进一步提高收敛速度，论文提出 Sharpened-BFGS 算法，通过结合两者的特点，实现了在更少的步数内达到局部二次收敛速率。数值实验也验证了该算法的优越性。
 \end{abstract}
 \cleardoublepage
 
@@ -106,7 +106,7 @@
 \section{论文介绍}
 \subsection{问题背景}
 % 论文的问题背景，对应原论文 Introduction 中 Conrtribution 之前的部分，应该比较简单
-拟牛顿法主要用于如下的解决无约束优化问题
+拟牛顿法主要用于解决如下的无约束优化问题
 
 \begin{equation}\label{main_prob}
     \min_{x \in \mathbb{R}^d} f(x),
@@ -114,20 +114,25 @@
 
 其中 $f:\mathbb{R}^d\to \mathbb{R}$ 是强凸的并且其梯度 Lipschitz 连续。我们用 $x_*$ 表示问题 \eqref{main_prob} 的唯一最优解。
 
-一阶算法，即基于梯度的方法，是求解问题 \eqref{main_prob} 最常用的方法，它以线性的速率（即误差以指数速率衰减）收敛到最优解。一阶算法的主要优势在于每次迭代的计算代价为 $\mathcal{O}(d)$，其中 $d$ 是问题的维度。然而，这些方法的收敛速度会受目标函数的曲率影响，因此在不适定问题（即条件数较大的问题）中，其收敛速度会变得很慢。为了解决这个问题，人们提出了牛顿法，即利用目标函数的 Hessian 矩阵改进曲率估计的二阶方法。牛顿法可以较好地处理不适定问题，且可以达到更快的局部收敛速率 \cite{bennett1916newton}\cite{ortega1970iterative}\cite{conn2000trust}\cite{nesterov2006cubic}。在 Hessian 矩阵满足 Lipschitz 连续的条件下求解问题 \eqref{main_prob} 时，牛顿法在局部可以达到二次收敛速率 \cite[Chapter 9]{boyd2004convex}，但是牛顿法在每次迭代时，都需要求解线性方程组，其代价为 $\mathcal{O}(d^3)$。
+一阶算法，即基于梯度的方法，是求解问题 \eqref{main_prob} 最常用的方法，它以线性的速率（即误差以指数速率衰减）收敛到最优解。一阶算法的主要优势在于每次迭代的计算代价为 $\mathcal{O}(d)$，其中 $d$ 是问题的维度。然而，这种方法的收敛速度会受目标函数的曲率影响，因此在不适定问题（条件数较大的问题）中，其收敛速度会变得很慢。为了解决这个问题，人们提出了牛顿法，即利用目标函数的 Hessian 矩阵改进曲率估计的二阶方法。牛顿法可以较好地处理不适定问题，且可以达到更快的局部收敛速率 \cite{bennett1916newton}\cite{ortega1970iterative}\cite{conn2000trust}\cite{nesterov2006cubic}。在 Hessian 矩阵满足 Lipschitz 连续的条件下求解问题 \eqref{main_prob} 时，牛顿法在局部可以达到二次收敛速率 \cite[Chapter 9]{boyd2004convex}，但是牛顿法在每次迭代时，都需要求解线性方程组，其代价为 $\mathcal{O}(d^3)$。
 
 拟牛顿法是是一种介于一阶方法和二阶方法之间的方法，它比一阶的方法具有更快的收敛速率，即超线性收敛，且迭代的计算代价为 $\mathcal{O}(d^2)$，比牛顿法的 $\mathcal{O}(d^3)$ 代价更优。拟牛顿法的主要思想是，构造一个正定矩阵来近似牛顿法中目标函数的 Hessian 矩阵。因为拟牛顿法中对矩阵的更新只需要通过一系列矩阵与向量的乘法来实现，所以拟牛顿法的计算代价为 $\mathcal{O}(d^2)$。拟牛顿法有很多种，主要的区别在于如何迭代更新矩阵来近似 Hessian 矩阵，比如 SR1 方法\cite{conn1991convergence}, Broyden 方法\cite{broyden1965class}\cite{broyden1973quasi}\cite{gay1979some}, DFP 方法\cite{davidon1959variable}\cite{fletcher1963rapidly}, BFGS 方法\cite{broyden1970convergence}\cite{fletcher1970new}\cite{goldfarb1970family}\cite{shanno1970conditioning}, L-BFGS 方法\cite{nocedal1980updating}\cite{DingNocedal}，以及 Greedy-QN 方法\cite{rodomanov2020greedy}。
 
-拟牛顿法的一个重要特点是，它们可以达到超线性收敛速率。其中，\citet{rodomanov2020greedy} 介绍并分析了一种新的拟牛顿法，即 Greedy-QN 方法。它基于经典的 Broyden 拟牛顿法，但是通过贪心地选择更新矩阵的方向，使得下降过程更快。Greedy-QN 方法的收敛速度在非渐进意义下是达到了 $(1 - {1}/{d\kappa})^{t^2/2}(d\kappa)^t$，其中 $\kappa$ 是问题的条件数。注意到这一边界等价于 $((1 - {1}/{d\kappa})^{t/2}(d\kappa))^t$，说明二次的局部收敛速度在 $t\geq d\kappa \ln (d\kappa)$ 时可以达到。此外，相比经典的拟牛顿法，Greedy-QN 需要更多信息，其中包括了每一次迭代中 Hessian 矩阵的对角元。\citet{rodomanov2020rates} 中证明了 BFGS 与 DFP 在内的经典拟牛顿法在非渐进意义下的超线性收敛速度。在满足目标函数强凸光滑且强自协调的条件下，它们分别以 $({d\kappa}/{t})^{t/2}$ 与 $({d\kappa^2}/{t})^{t/2}$ 的局部超线性速率收敛。而后在 \citet{rodomanov2020ratesnew} 中，两者的收敛速率分别改进为 $({(d\ln{\kappa})}/{t})^{{t}/{2}}$ 与 $({(d\kappa\ln{\kappa})}/{t})^{{t}/{2}}$。
+拟牛顿法的一个重要特点是，它们可以达到超线性收敛速率。其中，\citet{rodomanov2020greedy} 介绍并分析了一种新的拟牛顿法，即 Greedy-QN 方法。它基于经典的 Broyden 拟牛顿法，但是通过贪心地选择更新矩阵的方向，使得下降过程更快。Greedy-QN 方法的收敛速度在非渐进意义下是达到了 $(1 - {1}/{d\kappa})^{t^2/2}(d\kappa)^t$，其中 $\kappa$ 是问题的条件数。注意到这一边界等价于 $((1 - {1}/{d\kappa})^{t/2}(d\kappa))^t$，说明二次的局部收敛速度在 $t\geq d\kappa \ln (d\kappa)$ 时可以达到。此外，相比经典的拟牛顿法，Greedy-QN 需要更多信息，其中包括了每一次迭代中 Hessian 矩阵的对角元。\citet{rodomanov2020rates} 证明了 BFGS 与 DFP 在内的经典拟牛顿法在非渐进意义下的超线性收敛速度。在满足目标函数强凸光滑且强自协调的条件下，它们分别以 $({d\kappa}/{t})^{t/2}$ 与 $({d\kappa^2}/{t})^{t/2}$ 的局部超线性速率收敛。而后 \citet{rodomanov2020ratesnew} 将两者的收敛速率分别改进为 $({(d\ln{\kappa})}/{t})^{{t}/{2}}$ 与 $({(d\kappa\ln{\kappa})}/{t})^{{t}/{2}}$。
 
 \subsection{论文贡献}
 % 论文的贡献，对应原论文 Introduction 中的 Conrtribution 部分，应该比较简单
-如上所述，经典的 BFGS 方法旨在逼近牛顿方向，并在初始时就获得较快的收敛速度，但它无法完美逼近Hessian 矩阵。另一方面，Greedy-BFGS 的目标是直接逼近 Hessian 矩阵，因此一开始它的收敛速度比 BFGS 慢，但在 Hessian 矩阵的近似完善后，它的收敛速度就会比 BFGS 快得多。因此论文提出了一个问题，即是否有一种可能的方法，可以两全其美地实现一种拟牛顿法，同时逼近牛顿方向与 Hessian 矩阵，从而用更少的迭代步数获得更快的收敛速度。
+如上所述，经典的 BFGS 方法旨在逼近牛顿方向，并在初始时就获得较快的收敛速度，但它无法完美逼近Hessian 矩阵。另一方面，Greedy-BFGS 的目标是直接逼近 Hessian 矩阵，因此一开始它的收敛速度比 BFGS 慢，但在 Hessian 矩阵的近似完善后，它的收敛速度就会比 BFGS 快得多。因此论文提出了一个问题：
+
+\begin{quote}
+    是否有一种可能的方法，可以两全其美地实现一种拟牛顿法，同时逼近牛顿方向与 Hessian 矩阵，从而用更少的迭代步数获得更快的收敛速度？    
+\end{quote}
+
 
 由此，论文提出了一种新颖的 Sharpened-BFGS 方法，它结合了 BFGS 和 Greedy-BFGS 的优点，通过近似牛顿方向来实现类似 BFGS 方法的初始快速收敛，同时实现类似 Greedy-BFGS 的对 Hessian 矩阵的更精确的估计，以达到二次收敛速率。论文中的这种方法在收敛速度方面优于 BFGS 和 Greedy-BFGS，同时与Greedy-BFGS 方法相比，它以更少的迭代次数达到了超线性收敛速度。此外，Sharpened-BFGS 每次迭代的计算成本与经典 BFGS 及 Greedy-BFGS 相同。
 \subsection{章节组织}
 % 论文的章节组织，无对应部分，大概是要简单介绍一下原论文的章节组织？
-摘要部分概述了论文的主要贡献和结果，包括提出了一种新的 BFGS 方法，证明了它的非渐近超线性收敛率和局部二次收敛率，并在数值实验中验证了它的优越性。
+摘要部分概述了论文的主要贡献和结果，包括提出了一种新的 BFGS 方法，证明了它的非渐近超线性收敛速率和局部二次收敛速率，并在数值实验中验证了它的优越性。
 
 在简介部分中，论文首先通过经典的无约束优化问题引入线性的下降法，并且由更快的收敛速率这一目标引出经典的牛顿法，并指出了牛顿法计算代价过大这一问题，引出了用正定矩阵近似目标函数的 Hessian 矩阵的方法，即拟牛顿法；随后主要介绍了三种拟牛顿法，即经典 BFGS、Greedy-BFGS 以及论文提出的 Sharpened-BFGS，并指出 Greedy-BFGS 的优越性。这一部分还提出了这篇论文的贡献以及与此相关的一些论文所做的工作。
 
@@ -146,7 +151,7 @@
 %-----------------------
 \section{相关工作}\label{section:related}
 % 论文的相关工作，对应原论文 Introduction 中的 Related Work 部分，应该比较简单
-在目标函数强凸、光滑及其最优解处的 Hessian 矩阵满足 Lipschitz 连续的条件下，\citet{qiujian2020quasinewton1} 给出经典的拟牛顿方法的非渐近超线性收敛速度为 $({1}/{t})^{t/2}$。他们对自协调函数也给出了类似的结果。它们的局部收敛速度不依赖于 $d$ 或 $\kappa$ 等与问题有关的参数，但该结果要求 Hessian 矩阵逼近误差和到最优解的距离都足够小。此外，\citet{zhangzhihua2021quasinewton1} 还明确给出了 SR1 方法的局部超线性收敛速率。\citet{zhangzhihua2021quasinewton2} 还扩展了求解非线性方程的 Broyden 系列拟牛顿法的非渐近局部超线性收敛速率。值得注意的是，\citet{zhangzhihua2021quasinewton3}提出了一种基于随机的Greedy-BFGS，其收敛速度为$(d\kappa(1 \!-\! \frac{1}{d})^{\frac{t}{2}})^{t}$。这种随机技术也可用于论文中提出的 Sharpened BFGS 方法以改善其收敛速度对 $\kappa$ 的依赖性。在附录中，论文展示并分析了基于随机的 Sharpened-BFGS。
+在目标函数强凸、光滑及其最优解处的 Hessian 矩阵满足 Lipschitz 连续的条件下，\citet{qiujiang2020quasinewton1} 给出经典拟牛顿法的非渐近超线性收敛速度为 $({1}/{t})^{t/2}$。他们对自协调函数也给出了类似的结果。它们的局部收敛速度不依赖于 $d$ 或 $\kappa$ 等与问题有关的参数，但该结果要求 Hessian 矩阵逼近误差和到最优解的距离都足够小。此外，\citet{zhangzhihua2021quasinewton1} 还明确给出了 SR1 方法的局部超线性收敛速率。\citet{zhangzhihua2021quasinewton2} 还扩展了求解非线性方程的 Broyden 系列拟牛顿法的非渐近局部超线性收敛速率。值得注意的是，\citet{zhangzhihua2021quasinewton3}提出了一种基于随机的Greedy-BFGS，其收敛速度为$(d\kappa(1 \!-\! \frac{1}{d})^{\frac{t}{2}})^{t}$。这种随机技术也可用于论文中提出的 Sharpened BFGS 方法以改善其收敛速度对 $\kappa$ 的依赖性。论文的附录中展示并分析了基于随机的 Sharpened-BFGS 方法。
 
 %-----------------------
 %
@@ -170,15 +175,21 @@
     BFGS(A, G, u) = G_+ := G - \frac{G u u^\top G}{u^\top G u} + \frac{A u u^\top A}{u^\top A u}.
 \end{equation}
 
-注意到，这次更新将 $G$ 转移至 $G_+$，其中 $A$ 与 $G_+$ 在方向 $u$ 上的作用相同，即 $Au=G_+u$。因为我们需要在每一次迭代时计算 Hessian 的近似矩阵的逆矩阵，所以在迭代中我们直接更新 Hessian 逆矩阵的近似。利用 Sherman-Morrison-Woodbury 公式可以证明 Hessian 逆近似矩阵 $H = G^{-1}$ 的更新可以写为
+注意到，这次更新将 $G$ 转移至 $G_+$，其中 $A$ 与 $G_+$ 在方向 $u$ 上的作用相同，即 $Au=G_+u$。
 
-\begin{equation}\label{BFGS_inverse_update}
-    H_+ = \left(I-\frac{u u^\top A}{u^\top Au}\right) H \left(I-\frac{ Au u^\top}{u^\top Au}\right) +\frac{u u^\top}{u^\top Au}.
-\end{equation}
+\begin{remark2}
+    因为我们需要在每一次迭代时计算 Hessian 的近似矩阵的逆矩阵，所以在迭代中我们直接更新 Hessian 逆矩阵的近似。利用 Sherman-Morrison-Woodbury 公式可以证明 Hessian 逆近似矩阵 $H = G^{-1}$ 的更新可以写为
 
-由于其中只包含矩阵与向量的乘积，BFGS 的计算代价为 $\mathcal{O}(d^2)$。为了最小化目标函数并且使近似的线性算子趋向于目标函数的曲率，我们令方向向量 $u =x_{t+1}-x_t$ 并设算子为平均 Hessian 矩阵 $A = J_t:= \int_{0}^{1}\nabla^2{f(x_t + \tau(x_{t+1} - x_t))}d\tau$。这样可以保证新的 Hessian 近似矩阵 $G_{t+1}$ 满足割线条件，即 $$G_{t+1} (x_{t+1}-x_t)=J_t(x_{t+ 1}-x_t) = \nabla f(x_{t+1})-\nabla f(x_t), $$
+    \begin{equation}\label{BFGS_inverse_update}
+        H_+ = \left(I-\frac{u u^\top A}{u^\top Au}\right) H \left(I-\frac{ Au u^\top}{u^\top Au}\right) +\frac{u u^\top}{u^\top Au}.
+    \end{equation}
+    
+    由于其中只包含矩阵与向量的乘积，BFGS 的计算代价为 $\mathcal{O}(d^2)$。    
+\end{remark2}
 
-定义变量差分 $s_t = x_{t+1}-x_t$ 以及梯度差 $y_t = \nabla f(x_{t+1})-\nabla f(x_t)$，则经典的 BFGS 算法更新为
+为了最小化目标函数并且使近似的线性算子趋向于目标函数的曲率，我们令方向向量 $u =x_{t+1}-x_t$ 并设算子为平均 Hessian 矩阵 $$A = J_t:= \int_{0}^{1}\nabla^2{f(x_t + \tau(x_{t+1} - x_t))}d\tau.$$这样可以保证新的 Hessian 近似矩阵 $G_{t+1}$ 满足割线条件，即 $$G_{t+1} (x_{t+1}-x_t)=J_t(x_{t+ 1}-x_t) = \nabla f(x_{t+1})-\nabla f(x_t), $$
+
+定义差分 $s_t = x_{t+1}-x_t$ 以及梯度差 $y_t = \nabla f(x_{t+1})-\nabla f(x_t)$，则经典的 BFGS 算法更新为
 \begin{equation}\label{BFGS_standard_update}
     G_{t+1} = G_t - \frac{G_t s_t s_t^\top G_t}{s_t^\top G_t s_t} + \frac{y_t y_t^\top}{s_t^\top y_t}.
 \end{equation}
@@ -202,9 +213,9 @@
     \end{equation}
 \end{lema2}
 
-引理的证明见原论文附录。于是我们可以得到经过一步迭代后 Hessian 近似矩阵与原目标函数的 Hessian 矩阵之间的距离减小量。此外我们还可以发现，不同的方向向量 $u$ 会影响距离函数 $\sigma(A, G)$ 的下降。而 Hessian 近似矩阵对于任意的方向向量 $u \in \mathbb{R}^{d}\backslash\{0\}$ 并不一定能够收敛到目标函数的 Hessian 矩阵。如果我们令 $u=x^+-x$，那同样不能保证 $\sigma(A, G)$ 可以趋于零。这又提出了一个新的问题，即如何选择方向向量 $u$ 使得 $\sigma(A, G)$ 下降最大，并保证 $\sigma(A, G)$ 趋于零，即 $G$ 收敛到 $A$。
+引理的证明见原论文附录。于是我们可以得到经过一步迭代后 Hessian 近似矩阵与原目标函数的 Hessian 矩阵之间的距离减小量。此外我们还可以发现，不同的方向向量 $u$ 会影响势函数 $\sigma(A, G)$ 的下降。而 Hessian 近似矩阵对于任意的方向向量 $u \in \mathbb{R}^{d}\backslash\{0\}$ 并不一定能够收敛到目标函数的 Hessian 矩阵。如果我们令 $u=x^+-x$，那同样不能保证 $\sigma(A, G)$ 可以趋于零。这又提出了一个新的问题，即如何选择方向向量 $u$ 使得 $\sigma(A, G)$ 下降最大，并保证 $\sigma(A, G)$ 趋于零，即 $G$ 收敛到 $A$。
 
-\citet{rodomanov2020greedy} 提出了一个贪心方法来确定 $u$ 的最佳选择。考虑一个二次问题，其中目标函数的 Hessian 矩阵是固定的并由正定矩阵 $A$ 表示。在这种情况下，为了最大化 \eqref{lema2_BFGS_general_1} 的右侧（BFGS 更新的进度），可以选择 $u$ 为
+\citet{rodomanov2020greedy} 提出了一个贪心方法来确定 $u$ 的最佳选择。考虑一个二次问题，其中目标函数的 Hessian 矩阵是固定的并由正定矩阵 $A$ 表示。在这种情况下，为了最大化不等式 \eqref{lema2_BFGS_general_1} 的右侧（BFGS 更新的进度），可以选择 $u$ 为
 
 \begin{equation}\label{greedy_vector}
     \bar{u}(A, G) := \argmax_{u \in \{e_i\}_{i = 1}^{d}} \frac{u^\top G u}{u^\top A u},
@@ -213,13 +224,13 @@
 其中 $\{e_i\}$ 是第 $i$ 个元素为 $1$ 且其余元素为 $0$ 的向量。如果我们在 BFGS 更新 \eqref{BFGS_update} 的每次迭代中选择 $u = \bar{u}(A, G)$，我们就得到 \cite{rodomanov2020greedy} 中的 Greedy-BFGS 算法。这种贪婪选择的优点是，它确保了 $\sigma(A, G)$ 严格递减并线性收敛到 $0$。
 
 \begin{lema2}[\cite{rodomanov2020greedy}]\label{lema2_BFGS_greedy}
-    设正定矩阵 $A, G \in \mathbb{R}^{d \times d}$，满足 $A \preceq G$ 且 $ \mu I \preceq A \preceq LI$ 其中 $0 < \mu \leq L$ 为常数。设 $\bar{G}_{+} = BFGS(A, G, \bar{u}(A, G))$ 其中 $\bar{u}(A, G) \in \mathbb{R}^d$，$\bar{u}(A, G) \in \mathbb{R}^d$ 使用 \eqref{greedy_vector} 中的贪心策略进行选择。可以得到
+    设正定矩阵 $A, G \in \mathbb{R}^{d \times d}$，满足 $A \preceq G$ 且 $ \mu I \preceq A \preceq LI$，其中 $0 < \mu \leq L$ 为常数。设 $\bar{G}_{+} = BFGS(A, G, \bar{u}(A, G))$ 其中 $\bar{u}(A, G) \in \mathbb{R}^d$，$\bar{u}(A, G) \in \mathbb{R}^d$ 使用 \eqref{greedy_vector} 中的贪心策略进行选择。可以得到
     \begin{equation}\label{lema2_BFGS_greedy_1}
         \sigma(A, \bar{G}_{+}) \leq \left(1 - \frac{\mu}{dL}\right)\sigma(A, G).
     \end{equation}
 \end{lema2}
 
-由此可得，\eqref{sigma} 中的度量函数 $\sigma(.,.)$ 在遵循 Greedy-BFGS 策略更新 Hessian 近似矩阵的情况下，误差线性收敛到零，最终得到的 Hessian 近似矩阵序列趋向于目标 Hessian 矩阵。这对于非二次情况同样成立，但需要修改算法，因为平均 Hessian 矩阵 $J_t$ 的计算成本很高，我们可以将其替换为当前的 Hessian $\nabla^2 f(x_t)$。
+由此可得，\eqref{sigma} 中的度量函数 $\sigma(.,.)$ 在遵循 Greedy-BFGS 策略更新 Hessian 近似矩阵的情况下，误差线性收敛到零，最终得到的 Hessian 近似矩阵序列趋向于目标 Hessian 矩阵。这对于非二次情况同样成立，但需要修改算法，因为平均 Hessian 矩阵 $J_t$ 的计算成本很高，我们可以将其替换为当前的 Hessian 矩阵 $\nabla^2 f(x_t)$。
 
 %-----------------------
 %
