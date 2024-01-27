@@ -1,15 +1,14 @@
-import time
-from sklearn.datasets import load_svmlight_file
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
+from sklearn.datasets import load_svmlight_file
 
 configs = {
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'need_record': True,
+    'need_record': False,
     'max_iter': 3000,
     'M': 0,
     'optimizer': 'SharpenedBFGS', # GD, BFGS, GreedyBFGS, SharpenedBFGS

@@ -30,6 +30,10 @@
 \usepackage{lipsum}
 \usepackage{metalogo}
 
+\usepackage{fontspec}
+\usepackage{minted}
+\usepackage{xcolor}
+\usepackage{pgfplots}
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Title, Authors, Reprot Time.
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -66,6 +70,31 @@
 \renewcommand{\refname}{Reference}
 \DeclareMathOperator*{\argmax}{arg\,max}
 \DeclareMathOperator*{\argmin}{arg\,min}
+
+\IfFontExistsTF{FiraMono-Medium}{
+\setmonofont{FiraMono-Medium}[Scale=MatchLowercase]
+}{
+\setmonofont[Path=extrafonts/,Scale=MatchLowercase]{FiraMono-Medium}
+}
+\setminted{style=xcode, frame=single, linenos, breaklines, numbersep=8pt, fontsize=\small, baselinestretch=1.05}
+\renewcommand{\theFancyVerbLine}{\sffamily\textcolor{gray}{\scriptsize\arabic{FancyVerbLine}}}
+\usepgfplotslibrary{colorbrewer}
+
+\pgfplotsset{
+    every axis/.append style={
+        ymode=log,
+        legend pos=outer north east,
+        xlabel={迭代次数$t$},
+        ylabel={$\dfrac{\lambda_f(x_t)}{\lambda_f(x_0)}$},
+        ylabel style={rotate=-90, xshift=-15pt},
+        title style={font=\LARGE},
+        label style={font=\large},
+        tick label style={font=\normalsize},
+        cycle list/Dark2,
+        very thick,
+    }
+}
+
 % -------------------------------------------------
 
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -256,7 +285,7 @@ Sharpened-BFGS算法的核心思想就是同时使用经典的BFGS算法和贪�
 
 \begin{algorithm}[H]\xiaosi
     \caption{\xiaosi Sharpened-BFGS applied to quadratic programming}
-    \begin{algorithmic}
+    \begin{algorithmic}\label{algorithm:1}
         \REQUIRE 初始化变量$x_0$, 初始化近似矩阵$G_0=LI$
         \FOR{$t=0,1,2,\cdots$}
             \STATE 更新变量 $x_{t+1}=x_t-G_t^{-1}\nabla f(x_t)$;
@@ -355,10 +384,10 @@ Sharpened-BFGS算法的核心思想就是同时使用经典的BFGS算法和贪�
 \subsection{一般的强凸光滑场景}
 
 在本节中，我们将Sharpened-BFGS算法扩展到一般的情形。为了建立算法的超线性收敛速率，我们需要如下的两个假设。
-\begin{assumption}
+\begin{assumption}\label{assumption:1}
     目标函数$f$二阶可微。$f$是强凸函数，强凸参数为$\mu>0$, 并且$f$的梯度$\nabla f$是Lipschitz连续的，Lipschitz参数为$L>0$。
 \end{assumption}
-\begin{assumption}
+\begin{assumption}\label{assumption:2}
     目标函数$f$是具有参数$M$的强自和谐函数。即对于任意$x,y,z,w\in \mathbb{R}^n$, 我们有：
     \begin{equation}
         \nabla^{2}{f(y)} - \nabla^{2}{f(x)} \preceq M\|y - x\|_{z}\nabla^{2}{f(w)}
@@ -373,7 +402,7 @@ $\|y - x\|_{z}$表示向量$y-x$通过$z$点Hessian矩阵的作用后产生变�
 下面给出一般的Sharpened-BFGS算法的伪代码:
 \begin{algorithm}[H]\xiaosi
     \caption{\xiaosi General Sharpened-BFGS}
-    \begin{algorithmic}{
+    \begin{algorithmic}{\label{algorithm:2}
         \REQUIRE 初始化变量$x_0$, 初始化近似矩阵$G_0=LI$
         \FOR{$t=0,1,2,\cdots$}
             \STATE 更新变量 $x_{t+1}=x_t-G_t^{-1}\nabla f(x_t)$;
@@ -519,16 +548,104 @@ $\|y - x\|_{z}$表示向量$y-x$通过$z$点Hessian矩阵的作用后产生变�
 %
 %-----------------------
 \section{实验结果}\label{section:experiment}
-% 对应原论文的 Numerical Experiments 一节，对带正则化项的逻辑斯蒂回归函数做实验
-% 我觉得应该是要自己实现算法做实验，然后把实验结果画图放进来
+
+\subsection{实验设置}
+在这一节中，我们将在不同数据集上展开实验，将Sharpened-BFGS算法的表现与经典BFGS算法和Greedy-BFGS算法进行比较。我们只关注下面这个具有$l_2$正则化的逻辑斯蒂回归问题：
+\begin{equation}\label{eq:logistic_regression}
+    \min_{x\in\mathbb{R}^d}f(x) = \frac{1}{N} \sum_{i=1}^N \log(1 + \exp^{-y_iz_i^{\top}x}) + \frac{\mu}{2} \|x\|^2
+\end{equation}
+
+其中，$z_i\in\mathbb{R}^d$是数据点，比如一张图像的一维展开，在训练前会将其标准化，使得$\|z_i\| = 1$；$y_i\in\{-1, 1\}$则是这个数据点对应的标签。
+
+这个目标函数是一个参数为$\mu > 0$的强凸函数，而且由于进行了标准化，还可得到它是一个Lipschitz参数为$L = 1/4 + \mu$的光滑函数。同时，这个逻辑斯蒂回归函数还是强和谐的，具体可见\cite{rodomanov2020greedy}的5.1节。因此，在\ref{eq:logistic_regression}式中定义的目标函数$f(x)$满足假设\ref{assumption:1}和\ref{assumption:2}。
+
+原论文在八个数据集上进行实验，我们从中选择了三个最具代表性的，分别是svmguide3、w8a和colon-canser，每个数据集的参数可见表\ref{tab:datasets}。
+
+\begin{table}
+    \centering
+    \begin{tabular}{ |c|c|c|c| }
+      \hline
+      Dataset & $N$ & $d$ & $\mu$ \\
+      \hline
+      \hline
+      svmguide3 & 1243 & 21 & 0.01 \\
+      \hline
+      w8a & 49749& 300 & 0.0001 \\
+      \hline
+      colon-cancer & 62 & 2000 & 0.00001 \\
+      \hline
+    \end{tabular}
+    \caption{样本大小~$N$, 维度~$d$, 正则化参数~$\mu$.}
+    \label{tab:datasets}
+\end{table}
+
+\subsection{算法实现}
+我们研究的算法是 (i) Sharpened-BFGS, (ii) standard BFGS, (iii) Greedy-BFGS, and (iv) gradient descent (GD)。在这里，我们通过使用PyTorch来实现这四个算法，定义了四个继承\texttt{torch.optim.Optimizer}的优化器，分别为 (i) \texttt{GD}, (ii) \texttt{BFGS}, (iii) \texttt{GreedyBFGS} 和 (iv) \texttt{SharpenedBFGS}。其中，\texttt{GD}优化器实现了梯度下降算法，\texttt{BFGS}实现了标准的BFGS算法，\texttt{GreedyBFGS}实现了贪心BFGS算法，\texttt{SharpenedBFGS}实现了本文提出的Sharpened-BFGS算法。
+
+跟原论文一样，我们将起始点初始化为$x_0 = (1/d^{3/2}) * \vec{\bm{1}}$，其中$\vec{\bm{1}}\in \mathbb{R}^d$是一个全为1的向量。对于BFGS算法，均将Hessian近似矩阵初始化为$LI$，步长设置为$1$；对于梯度下降算法，则将步长设置为$1/L$。在实践中发现，对于混合方法和贪心方法，不矫正Hessian近似矩阵效果会更好，即在算法\ref{algorithm:2}中令$\hat{G_t} = \bar{G_t}$，因此我们将$M$设置为0。
+
+具体的代码实现详见附录\ref{section:appendix}。
+
+\begin{figure}
+\centering
+\begin{tikzpicture}[scale=0.5]
+    \begin{axis}[title={(a) svmguide3}]
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/svmguide3_BFGS.csv};
+        \addlegendentry{BFGS}
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/svmguide3_GreedyBFGS.csv};
+        \addlegendentry{Greedy-BFGS}
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/svmguide3_SharpenedBFGS.csv};
+        \addlegendentry{Sharpened-BFGS}
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/svmguide3_GD.csv};
+        \addlegendentry{GD}
+    \end{axis}
+\end{tikzpicture}
+\begin{tikzpicture}[scale=0.5]
+    \begin{axis}[title={(b) w8a}]
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/w8a_BFGS.csv};
+        \addlegendentry{BFGS}
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/w8a_GreedyBFGS.csv};
+        \addlegendentry{Greedy-BFGS}
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/w8a_SharpenedBFGS.csv};
+        \addlegendentry{Sharpened-BFGS}
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/w8a_GD.csv};
+        \addlegendentry{GD}
+    \end{axis}
+\end{tikzpicture}
+\begin{tikzpicture}[scale=0.5]
+    \begin{axis}[title={(c) colon-cancer}]
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/colon-cancer_BFGS.csv};
+        \addlegendentry{BFGS}
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/colon-cancer_GreedyBFGS.csv};
+        \addlegendentry{Greedy-BFGS}
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/colon-cancer_SharpenedBFGS.csv};
+        \addlegendentry{Sharpened-BFGS}
+        \addplot table [x=Step, y=Value, col sep=comma] {./record/colon-cancer_GD.csv};
+        \addlegendentry{GD}
+    \end{axis}
+\end{tikzpicture}
+\caption{在不同数据集上BFGS、Greedy-BFGS、Sharpened-BFGS和GD的比较结果}
+\label{fig:results}
+\end{figure}
+
+\subsection{结果分析}
+我们在不同的数据集上运行代码，得到了图\ref{fig:results}所示的结果。从图中可以看出，Sharpened-BFGS算法的收敛速度确实快于经典的BFGS算法和Greedy-BFGS算法，就算稍慢也相差很小，这与理论分析的结果是一致的。更具体地说，在起始阶段，Sharpened-BFGS利用了BFGS在牛顿方向的近似从而获得了较快的收敛速度，而不像Greedy-BFGS那样由于Hessian估计不够准确而收敛较慢；而一旦迭代轮数足够多，Hessian近似矩阵足够精确，Sharpened-BFGS又和Greedy-BFGS一样获得了超线性的收敛速度。上述理论结果在实验结果中得到了清晰的体现。
+
+此外，我们还观察到了原论文没有提及的地方。在稳定性方面，可以看到，经典BFGS算法在达到最优点之后仍会出现较大幅度的震荡，而Sharpened-BFGS和Greedy-BFGS算法则没有这个问题，这是由于前者对Hessian矩阵的估计不准确，导致计算出来的搜索方向也不准确，从而偏离了最优点。
+
+还有一个有趣的现象是，BFGS算法在达到最优点之前以及Sharpened-BFGS算法在达到转折点之前，会出现较为明显的周期性震荡（这里的图表较小所以不太明显），而这一现象在Greedy-BFGS算法上并没有出现。这大概是也是因为BFGS和Sharpened-BFGS对于Hessian矩阵的估计不准确，导致搜索方向不准确，一会儿偏离正确的搜索方向，过一会儿再回到正确的搜索方向，呈现出一个动态平衡的过程，而这个问题对于Greedy-BFGS来说则不明显。
 
 %-----------------------
 %
 %-----------------------
-\section{问题分析与挑战}\label{section:problem}
+\section{问题与挑战}\label{section:problem}
 % 做了可以酌情加分，要不要做一下？
 % 可以就目标函数的局限性展开分析，比如说假设过于严苛，对于一般的问题不适用；实验只做了逻辑斯蒂回归，其他实验可能会出现 bad case（可以构造别的函数也做一下实验？）
+虽然Sharpened-BFGS结合了经典BFGS算法和Greedy-BFGS算法的优点，但是它的应用场景还是有一定的局限性的。
 
+首先，目标函数必须满足假设\ref{assumption:1}和\ref{assumption:2}，即目标函数必须是强凸的，其梯度必须是光滑的，并且是强自和谐的。这些假设对于一般的优化问题来说是比较严苛的，因此Sharpened-BFGS算法的应用场景也比较有限。
+
+其次，在图\ref{fig:results}中也可以看到，对于较大的维数$d$，Sharpened-BFGS估计的近似矩阵很难收敛到Hessian矩阵，从而难以达到超线性收敛速度，实际表现还不如BFGS算法，却要花费更多的计算时间。由此可见，对于大规模的优化问题，Sharpened-BFGS算法的效果可能并不好，还不如直接使用BFGS算法。
 %-----------------------
 %
 %-----------------------
@@ -540,6 +657,14 @@ Sharpened-BFGS算法充分利用了经典BFGS算法在牛顿方向的近似和�
 
 在学习这篇论文的工作时，我们体会到了不同优化方法的差异以及如何充分利用它们各自的优势得到表现更好的优化方法。同时，我们在跟着论文一步步推导并最终得到结果的过程中也学习到了如何从理论上分析算法的收敛速度，以及如何通过数值实验来验证理论结果，受益匪浅。
 
+%-----------------------
+%
+%-----------------------
+\newpage
+\section{附录}\label{section:appendix}
+
+GD、BFGS、Greedy-BFGS和Sharpened-BFGS算法的代码实现如下：
+\inputminted{python}{./code/main.py}
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Bibliography
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
